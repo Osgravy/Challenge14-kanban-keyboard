@@ -1,30 +1,51 @@
 import { JwtPayload, jwtDecode } from 'jwt-decode';
+import axios from 'axios';
 
 class AuthService {
-  getProfile() {
-    // TODO: return the decoded token
+  private tokenKey = 'kanban_token';
+
+  getProfile(): JwtPayload | null {
+    const token = this.getToken();
+    if (!token) return null;
+    return jwtDecode<JwtPayload>(token);
   }
 
-  loggedIn() {
-    // TODO: return a value that indicates if the user is logged in
-  }
-  
-  isTokenExpired(token: string) {
-    // TODO: return a value that indicates if the token is expired
+  loggedIn(): boolean {
+    const token = this.getToken();
+    // Return true if token exists and is not expired
+    return !!token && !this.isTokenExpired(token);
   }
 
-  getToken(): string {
-    // TODO: return the token
+  isTokenExpired(token: string): boolean {
+    try {
+      const decoded = jwtDecode<JwtPayload & { exp?: number }>(token);
+      if (decoded.exp === undefined) return false;
+      return decoded.exp < Date.now() / 1000;
+    } catch (err) {
+      return true;
+    }
   }
 
-  login(idToken: string) {
-    // TODO: set the token to localStorage
-    // TODO: redirect to the home page
+  getToken(): string | null {
+    return localStorage.getItem(this.tokenKey);
   }
 
-  logout() {
-    // TODO: remove the token from localStorage
-    // TODO: redirect to the login page
+  login(idToken: string): void {
+    localStorage.setItem(this.tokenKey, idToken);
+    // Set default Authorization header if using axios
+    if (typeof axios !== 'undefined') {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
+    }
+    window.location.href = '/';
+  }
+
+  logout(): void {
+    localStorage.removeItem(this.tokenKey);
+    // Clear Authorization header if using axios
+    if (typeof axios !== 'undefined') {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+    window.location.href = '/login';
   }
 }
 
